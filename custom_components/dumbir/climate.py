@@ -380,7 +380,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
     @property
     def current_humidity(self) -> Optional[int]:
         """Return the current humidity."""
-        return None
+        return self._current_humidity
 
     @property
     def target_humidity(self) -> Optional[int]:

@@ -7,7 +7,7 @@ dumbIR is using Broadlink Universal Remote, and supports climate, media\_player 
 
 ## How to install
 1. copy the directory `custom_components/dumbir` to `.homeassistant/custom_compoents/dumbir`.
-1. copy IR yaml file to `.homeassistatn/ir_codes/<entity>/`.
+1. copy IR yaml file to `.homeassistant/ir_codes/<entity>/`.
 1. Add configuration to `.homessistant/configuration.yaml`.
 
 ## Sample configuration 
