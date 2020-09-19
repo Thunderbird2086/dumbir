@@ -27,16 +27,17 @@ def load_ircodes(hass, ircodes_path):
     return ir_codes
 
 
-async def send_command(hass, host, payload):
+async def send_command(hass, remote, payload):
     """send command to broadlink remote"""
     if type(payload) is not str:
         # get an element from the array
         for ite in payload:
             # send a command
-            send_command(hass, host, ite)
+            send_command(hass, remote, ite)
 
-    service_data_json = {'host':  host, 'packet': payload}
+    service_data_json = {'entity_id': remote,
+                         'command': ':'.join(['b64', payload])}
     _LOGGER.debug("json: %s", service_data_json)
 
-    await hass.services.async_call('broadlink', 'send',
+    await hass.services.async_call('remote', 'send_command',
                                    service_data_json)
