@@ -55,6 +55,7 @@ from .const import (
     CONF_IRCODES,
     CONF_POWER,
     CONF_POWER_SENSOR,
+    CONF_REMOTE,
     # CONF_TOGGLE
 )
 
@@ -90,7 +91,7 @@ DEFAULT_SWING_MODE_LIST = []
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-    vol.Required(CONF_HOST): cv.string,
+    vol.Required(CONF_REMOTE): cv.string,
     vol.Required(CONF_IRCODES): cv.string,
     vol.Optional(CONF_TEMPERATURE_SENSOR): cv.entity_id,
     vol.Optional(CONF_HUMIDITY_SENSOR): cv.entity_id,
@@ -117,12 +118,13 @@ async def async_setup_platform(hass, config, async_add_entities,
 
 class DumbIRClimate(ClimateEntity, RestoreEntity):
     def __init__(self, hass, config, climate_conf):
-
         """Initialize the Broadlink IR Climate device."""
         self.hass = hass
 
         self._name = config.get(CONF_NAME)
-        self._host = config.get(CONF_HOST)
+        self._remote = config.get(CONF_REMOTE)
+        if not self._remote.startswith('remote.'):
+            self._remote = '.'.join(['remote', self._remote])
 
         temperature = climate_conf.get(CONF_TEMPERATURE)
         self._min_temp = temperature.get(CONF_MIN_TEMP)
@@ -276,7 +278,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
                                         self._current_state[ATTR_TEMPERATURE],
                                         self._current_state[ATTR_SWING_MODE])
 
-            await send_command(self.hass, self._host, payload)
+            await send_command(self.hass, self._remote, payload)
 
     async def _async_temp_sensor_changed(self, entity_id, old_state,
                                          new_state):

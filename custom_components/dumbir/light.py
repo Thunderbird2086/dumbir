@@ -31,6 +31,7 @@ from .const import (
     CONF_IRCODES,
     CONF_POWER,
     # CONF_POWER_SENSOR,
+    CONF_REMOTE,
     CONF_TOGGLE
 )
 
@@ -42,7 +43,7 @@ CONF_CHANNEL = 'channel'
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-    vol.Required(CONF_HOST): cv.string,
+    vol.Required(CONF_REMOTE): cv.string,
     vol.Required(CONF_IRCODES): cv.string,
     vol.Optional(CONF_CHANNEL, default=0): cv.positive_int
 })
@@ -65,7 +66,10 @@ class DumbIRLight(LightEntity, RestoreEntity):
         self.hass = hass
 
         self._name = config.get(CONF_NAME)
-        self._host = config.get(CONF_HOST)
+        self._remote = config.get(CONF_REMOTE)
+        if not self._remote.startswith('remote.'):
+            self._remote = '.'.join(['remote', self._remote])
+
         self._ir_codes = ir_codes
 
         self._is_on = False
@@ -126,17 +130,17 @@ class DumbIRLight(LightEntity, RestoreEntity):
             self._effect = kwargs[ATTR_EFFECT]
 
         if CONF_COMMAND_ON in self._ir_codes[CONF_POWER]:
-            await send_command(self.hass, self._host,
+            await send_command(self.hass, self._remote,
                                self._ir_codes[CONF_POWER][CONF_COMMAND_ON])
 
         if self._effect is not None:
-            await send_command(self.hass, self._host,
+            await send_command(self.hass, self._remote,
                                self._ir_codes[ATTR_EFFECT][self._effect])
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn the light off"""
         self._is_on = False
-        await send_command(self.hass, self._host,
+        await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_POWER][CONF_COMMAND_OFF])
 
     async def async_added_to_hass(self):

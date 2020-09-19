@@ -49,6 +49,7 @@ from .const import (
     CONF_IRCODES,
     CONF_POWER,
     CONF_POWER_SENSOR,
+    CONF_REMOTE,
     CONF_TOGGLE
 )
 
@@ -71,7 +72,7 @@ CONF_VOLUME = 'volume'
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-    vol.Required(CONF_HOST): cv.string,
+    vol.Required(CONF_REMOTE): cv.string,
     vol.Required(CONF_IRCODES): cv.string,
     vol.Optional(CONF_POWER_SENSOR): cv.entity_id
 })
@@ -90,12 +91,14 @@ async def async_setup_platform(hass, config, async_add_entities,
 
 class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
     def __init__(self, hass, config, ir_codes):
-
         """Initialize the Broadlink IR Media device."""
         self.hass = hass
 
         self._name = config.get(CONF_NAME)
-        self._host = config.get(CONF_HOST)
+        self._remote = config.get(CONF_REMOTE)
+        if not self._remote.startswith('remote.'):
+            self._remote = '.'.join(['remote', self._remote])
+
         self._power_sensor = config.get(CONF_POWER_SENSOR)
         self._ir_codes = ir_codes
 
@@ -239,7 +242,7 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
 
     async def async_turn_off(self):
         """Turn the media player off."""
-        await send_command(self.hass, self._host,
+        await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_POWER][CONF_COMMAND_OFF])
 
         self._state = STATE_OFF
@@ -247,7 +250,7 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
 
     async def async_turn_on(self):
         """Turn the media player off."""
-        await send_command(self.hass, self._host,
+        await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_POWER][CONF_COMMAND_ON])
 
         self._state = STATE_ON
@@ -257,7 +260,7 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
         """Send play command.
         This method must be run in the event loop and returns a coroutine.
         """
-        await send_command(self.hass, self._host,
+        await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_MEDIA][CONF_PLAY])
         self._state = STATE_PLAYING
         await self.async_update_ha_state()
@@ -266,7 +269,7 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
         """Send pause command.
         This method must be run in the event loop and returns a coroutine.
         """
-        await send_command(self.hass, self._host,
+        await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_MEDIA][CONF_PAUSE])
         self._state = STATE_PAUSED
         await self.async_update_ha_state()
@@ -275,32 +278,32 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
         """Send stop command.
         This method must be run in the event loop and returns a coroutine.
         """
-        await send_command(self.hass, self._host,
+        await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_MEDIA][CONF_STOP])
         self._state = STATE_IDLE
         await self.async_update_ha_state()
 
     async def async_media_previous_track(self):
         """Send previous track command."""
-        await send_command(self.hass, self._host,
+        await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_MEDIA][CONF_PREVIOUS])
         await self.async_update_ha_state()
 
     async def async_media_next_track(self):
         """Send next track command."""
-        await send_command(self.hass, self._host,
+        await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_MEDIA][CONF_NEXT])
         await self.async_update_ha_state()
 
     async def async_volume_down(self):
         """Turn volume down for media player."""
-        await send_command(self.hass, self._host,
+        await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_VOLUME][CONF_DOWN])
         await self.async_update_ha_state()
 
     async def async_volume_up(self):
         """Turn volume up for media player."""
-        await send_command(self.hass, self._host,
+        await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_VOLUME][CONF_UP])
         await self.async_update_ha_state()
 
@@ -308,14 +311,14 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
         """Mute the volume."""
         self._is_volume_muted = not self._is_volume_muted
 
-        await send_command(self.hass, self._host,
+        await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_VOLUME][CONF_MUTE])
         await self.async_update_ha_state()
 
     async def async_select_source(self, source):
         """Select channel from source."""
         self._source = source
-        await send_command(self.hass, self._host,
+        await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_SOURCES][source])
         await self.async_update_ha_state()
 
