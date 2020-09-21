@@ -18,7 +18,7 @@ dumbIR is using Broadlink Universal Remote, and supports climate, media\_player 
 climate:
   - platform: dumbir
     name: Daikin
-    remote: rm0_01
+    remote: rm3_01
     ir_codes: 'ir_codes/climate/daikin_arc478a19.yaml'
     # if you have external temperature sensor
     temperature_sensor: sensor.aqara_01_temperature
@@ -29,8 +29,8 @@ climate:
     name: Mitsubishi
     host: 192.168.0.128
     ir_codes: 'ir_codes/climate/mitsubishi_msz_j229_w.yaml'
-    # it's better to use owm if you don't have external temperature sensor
-    temperature_sensor: sensor.owm_temperature
+    # it's better to use openweathermap if you don't have external temperature sensor
+    temperature_sensor: sensor.openweathermap_temperature
 
 
 light:
@@ -47,13 +47,6 @@ media_player:
     ir_codes: 'ir_codes/media_players/sharp.yaml'
     # if you have external power sensor
     power_sensor: sensor.tv_power
-
-
-switch:
-  # dumbir needs broadlink switch
-  - platform: broadlink 
-    remote: rm3_03
-    mac: aa:bb:cc:dd:ee:ff
 ```
 
 For the details, refer to [wiki](https://github.com/Thunderbird2086/ha-custom-component-dumbir/wiki).
