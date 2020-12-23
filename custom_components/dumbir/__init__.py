@@ -33,10 +33,14 @@ async def send_command(hass, remote, payload):
         # get an element from the array
         for ite in payload:
             # send a command
-            send_command(hass, remote, ite)
+            await send_command(hass, remote, ite)
+        return
 
-    service_data_json = {'entity_id': remote,
-                         'command': ':'.join(['b64', payload])}
+    if not payload.startswith('b64:'):
+        payload = ':'.join(('b64', payload))
+
+    service_data_json = {'entity_id':  remote,
+                         'command': payload}
     _LOGGER.debug("json: %s", service_data_json)
 
     await hass.services.async_call('remote', 'send_command',
