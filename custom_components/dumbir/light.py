@@ -10,6 +10,7 @@ from homeassistant.components.light import (
     PLATFORM_SCHEMA
 )
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_COMMAND_OFF,
     CONF_COMMAND_ON,
@@ -18,6 +19,7 @@ from homeassistant.const import (
     STATE_ON
 )
 
+from homeassistant.core import HomeAssistant
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.restore_state import RestoreEntity
 
@@ -32,7 +34,8 @@ from .const import (
     CONF_POWER,
     # CONF_POWER_SENSOR,
     CONF_REMOTE,
-    CONF_TOGGLE
+    CONF_TOGGLE,
+    DOMAIN
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,15 +52,18 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 
-async def async_setup_platform(hass, config, async_add_entities,
-                               discovery_info=None):
+async def async_setup_platform(hass: HomeAssistant, entry: ConfigEntry,
+                               async_add_entities, discovery_info=None):
     """Set up the Dumb IR Media Player platform."""
-    ir_codes = load_ircodes(hass, config.get(CONF_IRCODES))
+    ir_codes = load_ircodes(hass, entry.get(CONF_IRCODES))
 
-    if not ir_codes:
-        return
+    async_add_entities([DumbIRLight(hass, entry, ir_codes)])
 
-    async_add_entities([DumbIRLight(hass, config, ir_codes)])
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
+                            async_add_entities):
+    """Set up the Dumb IR Climate Entity."""
+    async_setup_platform(hass, entry, async_add_entities)
 
 
 class DumbIRLight(LightEntity, RestoreEntity):
@@ -77,7 +83,7 @@ class DumbIRLight(LightEntity, RestoreEntity):
 
         channel = config.get(CONF_CHANNEL)
         if isinstance(self._ir_codes, list):
-            if channel < len(ir_codes):
+            if channel and channel < len(ir_codes):
                 self._ir_codes = ir_codes[channel]
             else:
                 self._ir_codes = ir_codes[0]
