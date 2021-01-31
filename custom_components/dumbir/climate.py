@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 import voluptuous as vol
 
+from homeassistant.core import HomeAssistant
 from homeassistant.components.climate import ClimateEntity, PLATFORM_SCHEMA
 from homeassistant.components.climate.const import (
     HVAC_MODE_AUTO,
@@ -21,6 +22,7 @@ from homeassistant.components.climate.const import (
     SUPPORT_SWING_MODE,
     SUPPORT_TARGET_TEMPERATURE
 )
+from homeassistant.config_entries import ConfigEntry
 
 from homeassistant.const import (
     ATTR_TEMPERATURE,
@@ -56,6 +58,7 @@ from .const import (
     CONF_POWER,
     CONF_POWER_SENSOR,
     CONF_REMOTE,
+    CONF_TEMPERATURE_SENSOR,
     # CONF_TOGGLE
 )
 
@@ -77,7 +80,6 @@ CONF_OPERATIONS = 'operations'
 CONF_PRECISION = 'precision'
 CONF_SWING_MODES = 'swing_modes'
 CONF_TEMPERATURE = 'temperature'
-CONF_TEMPERATURE_SENSOR = 'temperature_sensor'
 
 DEFAULT_NAME = 'DumbIR Climate'
 DEFAULT_FAN_MODE_LIST = [HVAC_MODE_AUTO]
@@ -105,15 +107,21 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 
-async def async_setup_platform(hass, config, async_add_entities,
-                               discovery_info=None):
+async def async_setup_platform(hass: HomeAssistant, entry: ConfigEntry,
+                               async_add_entities, discovery_info=None):
     """Set up the Dumb IR Climate platform."""
-    climate_conf = load_ircodes(hass, config.get(CONF_IRCODES))
+    climate_conf = load_ircodes(hass, entry.get(CONF_IRCODES))
 
     if not climate_conf:
         return
 
-    async_add_entities([DumbIRClimate(hass, config, climate_conf)])
+    async_add_entities([DumbIRClimate(hass, entry, climate_conf)])
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
+                            async_add_entities):
+    """Set up the Dumb IR Climate Entity."""
+    async_setup_platform(hass, entry, async_add_entities)
 
 
 class DumbIRClimate(ClimateEntity, RestoreEntity):

@@ -23,6 +23,7 @@ from homeassistant.components.media_player.const import (
     MEDIA_TYPE_CHANNEL
 )
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_COMMAND_OFF,
     CONF_COMMAND_ON,
@@ -35,6 +36,7 @@ from homeassistant.const import (
     STATE_PLAYING
 )
 
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_state_change
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -78,15 +80,21 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 
-async def async_setup_platform(hass, config, async_add_entities,
-                               discovery_info=None):
+async def async_setup_platform(hass: HomeAssistant, entry: ConfigEntry,
+                               async_add_entities, discovery_info=None):
     """Set up the Dumb IR Media Player platform."""
-    ir_codes = load_ircodes(hass, config.get(CONF_IRCODES))
+    ir_codes = load_ircodes(hass, entry.get(CONF_IRCODES))
 
     if not ir_codes:
         return
 
-    async_add_entities([DumbIRMediaPlayer(hass, config, ir_codes)])
+    async_add_entities([DumbIRMediaPlayer(hass, entry, ir_codes)])
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
+                            async_add_entities):
+    """Set up the Dumb IR Climate Entity."""
+    async_setup_platform(hass, entry, async_add_entities)
 
 
 class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
