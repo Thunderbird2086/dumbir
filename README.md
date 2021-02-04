@@ -27,7 +27,7 @@ climate:
 
   - platform: dumbir
     name: Mitsubishi
-    host: 192.168.0.128
+    remote: rm3_03
     ir_codes: 'ir_codes/climate/mitsubishi_msz_j229_w.yaml'
     # it's better to use openweathermap if you don't have external temperature sensor
     temperature_sensor: sensor.openweathermap_temperature

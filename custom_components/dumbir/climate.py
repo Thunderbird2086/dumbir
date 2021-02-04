@@ -107,21 +107,16 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 
-async def async_setup_platform(hass: HomeAssistant, entry: ConfigEntry,
-                               async_add_entities, discovery_info=None):
-    """Set up the Dumb IR Climate platform."""
-    climate_conf = load_ircodes(hass, entry.get(CONF_IRCODES))
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
+                            async_add_entities):
+    """Set up the Dumb IR Climate Entity."""
+    config = entry.data
+    climate_conf = load_ircodes(hass, config.get(CONF_IRCODES))
 
     if not climate_conf:
         return
 
-    async_add_entities([DumbIRClimate(hass, entry, climate_conf)])
-
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
-                            async_add_entities):
-    """Set up the Dumb IR Climate Entity."""
-    async_setup_platform(hass, entry, async_add_entities)
+    async_add_entities([DumbIRClimate(hass, config, climate_conf)])
 
 
 class DumbIRClimate(ClimateEntity, RestoreEntity):

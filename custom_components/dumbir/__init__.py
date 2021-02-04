@@ -17,6 +17,7 @@ PLATFORMS = ["climate", "light", "media_player"]
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the dumbIR component."""
+    hass.data.setdefault(DOMAIN, {})
     return True
 
 
@@ -39,13 +40,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
     _LOGGER.debug("async_unload: entry.data=(%s)", entry.data)
     component = entry.data[PLATFORM_TO_ADD]
-    unload_ok = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(entry, component)
-            ]
-        )
-    )
+    unload_ok = await hass.config_entries.async_forward_entry_unload(entry, component)
 
     _LOGGER.debug("async_unload: unload_ok=(%s)", unload_ok)
     _LOGGER.debug("async_unload: unload_ok=(%s)", type(unload_ok))
