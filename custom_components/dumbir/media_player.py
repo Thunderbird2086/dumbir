@@ -80,21 +80,16 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 
-async def async_setup_platform(hass: HomeAssistant, entry: ConfigEntry,
-                               async_add_entities, discovery_info=None):
-    """Set up the Dumb IR Media Player platform."""
-    ir_codes = load_ircodes(hass, entry.get(CONF_IRCODES))
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
+                            async_add_entities):
+    """Set up the Dumb IR Climate Entity."""
+    config = entry.data
+    ir_codes = load_ircodes(hass, config.get(CONF_IRCODES))
 
     if not ir_codes:
         return
 
-    async_add_entities([DumbIRMediaPlayer(hass, entry, ir_codes)])
-
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
-                            async_add_entities):
-    """Set up the Dumb IR Climate Entity."""
-    async_setup_platform(hass, entry, async_add_entities)
+    async_add_entities([DumbIRMediaPlayer(hass, config, ir_codes)])
 
 
 class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
