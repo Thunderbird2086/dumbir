@@ -1,0 +1,14 @@
+{
+  "domain": "dumbir",
+  "name": "dumbIR",
+  "config_flow": true,
+  "documentation": "https://github.com/Thunderbird2086/ha-custom-component-dumbir/wiki",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": [],
+  "homekit": {},
+  "dependencies": [],
+  "codeowners": [
+    "@ThunderBird2086"
+  ]
+}

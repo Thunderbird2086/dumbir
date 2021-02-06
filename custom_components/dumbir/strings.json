@@ -1,0 +1,41 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Device is already configured"
+        },
+        "error": {
+            "invalid_ir_code": "Invalid IR code file",
+            "invalid_remote": "Invalid remote",
+            "invalid_power_sensor": "Invalid power sensor",
+            "invalid_temperature_sensor": "Invalid temperature sensor",
+            "unknown": "Unexpected error"
+        },
+        "step": {
+            "user": {
+                "title": "Target Platform for DumbIR",
+                "description": "Pick one of supported platforms",
+                "data": {
+                    "paltform_to_add": "Platform"
+                }
+            },
+            "entity": {
+                "title": "Entity for DumbIR",
+                "description": "Add entity. The sensor(s) are optional. Leave empty unless it exists",
+                "data": {
+                    "name": "Name",
+                    "remote": "Remote",
+                    "ir_codes": "IR codes",
+                    "power_sensor": "Power sensor",
+                    "temp_sensor": "Temperature sensor"
+                }
+            }
+        }
+    },
+    "device_automation": {
+        "trigger_type": {
+            "turned_off": "{entity_name} turned off",
+            "turned_on": "{entity_name} turned on"
+        }
+    },
+    "title": "dumbIR"
+}
