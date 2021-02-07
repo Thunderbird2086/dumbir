@@ -54,6 +54,7 @@ from . import (
 
 from .const import (
     CONF_COMMANDS,
+    CONF_HUMIDITY_SENSOR,
     CONF_IRCODES,
     CONF_POWER,
     CONF_POWER_SENSOR,
@@ -73,7 +74,6 @@ ATTR_LAST_ON_STATE = 'last_on_state'
 
 CONF_COMMAND_IDLE = 'command_idle'
 CONF_FAN_MODES = 'fan_modes'
-CONF_HUMIDITY_SENSOR = 'humidity_sensor'
 CONF_MAX_TEMP = 'max_temp'
 CONF_MIN_TEMP = 'min_temp'
 CONF_OPERATIONS = 'operations'
@@ -724,7 +724,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
 
             temp_sensor_state = self.hass.states.get(self._temperature_sensor)
             if temp_sensor_state and temp_sensor_state.state != STATE_UNKNOWN:
-                self._async_update_temp(temp_sensor_state)
+                self._update_temp(temp_sensor_state)
 
         if self._humidity_sensor:
             async_track_state_change(self.hass, self._humidity_sensor,
@@ -733,7 +733,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
             humidity_sensor_state = self.hass.states.get(self._humidity_sensor)
             if humidity_sensor_state and \
                humidity_sensor_state.state != STATE_UNKNOWN:
-                self._async_update_humidity(humidity_sensor_state)
+                self._update_humidity(humidity_sensor_state)
 
         '''
         if self._power_sensor:

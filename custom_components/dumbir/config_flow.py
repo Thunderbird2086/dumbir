@@ -8,6 +8,7 @@ import voluptuous as vol
 from homeassistant import config_entries, core, exceptions
 
 from .const import ( # pylint:disable=unused-import
+    CONF_HUMIDITY_SENSOR,
     CONF_IRCODES,
     CONF_POWER_SENSOR,
     CONF_REMOTE,
@@ -20,7 +21,8 @@ from . import PLATFORMS  # pylint:disable=unused-import
 
 _LOGGER = logging.getLogger(__name__)
 
-_OPTIONAL_TEMP_SENSOR = ['climate']
+_OPTIONAL_HUMIDITY_SENSOR = ['climate']
+_OPTIONAL_TEMPERATURE_SENSOR = ['climate']
 _STEP_USER_DATA_SCHEMA = {
     vol.Required(PLATFORM_TO_ADD, default=PLATFORMS[0]): vol.In(PLATFORMS)
 }
@@ -60,9 +62,15 @@ def update_schema(data_schema, platform):
         }
     )
 
-    if platform in _OPTIONAL_TEMP_SENSOR:
+    if platform in _OPTIONAL_TEMPERATURE_SENSOR:
         data_schema.update(
-            { vol.Optional("temp_sensor"): str
+            { vol.Optional(CONF_TEMPERATURE_SENSOR): str
+            }
+        )
+
+    if platform in _OPTIONAL_HUMIDITY_SENSOR:
+        data_schema.update(
+            { vol.Optional(CONF_HUMIDITY_SENSOR): str
             }
         )
 
@@ -101,6 +109,8 @@ class DumbIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         try:
             config = validate_input(user_input, self.platform)
+        except InvalidHumiditySensor:
+            errors["base"] = "invalid_humidity_sensor"
         except InvalidRemote:
             errors["base"] = "invalid_remote"
         except InvalidPowerSensor:
@@ -120,6 +130,10 @@ class DumbIRConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="entity",
             data_schema=vol.Schema(data_schema), errors=errors
         )
+
+
+class InvalidHumiditySensor(exceptions.HomeAssistantError):
+    """Error to indicate invalid humidity sensor."""
 
 
 class InvalidIrCodesFile(exceptions.HomeAssistantError):

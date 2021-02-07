@@ -4,6 +4,7 @@
             "already_configured": "Device is already configured"
         },
         "error": {
+            "invalid_humidity_sensor": "Invalid humidity sensor",
             "invalid_ir_code": "Invalid IR code file",
             "invalid_remote": "Invalid remote",
             "invalid_power_sensor": "Invalid power sensor",
@@ -25,8 +26,9 @@
                     "name": "Name",
                     "remote": "Remote",
                     "ir_codes": "IR codes",
-                    "power_sensor": "Power sensor",
-                    "temp_sensor": "Temperature sensor"
+                    "power_sensor": "Power sensor if exists",
+                    "temp_sensor": "Temperature sensor if exists",
+                    "humid_sensor": "Humidity sensor if exists"
                 }
             }
         }
