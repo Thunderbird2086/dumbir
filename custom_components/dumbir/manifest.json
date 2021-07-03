@@ -10,5 +10,6 @@
   "dependencies": [],
   "codeowners": [
     "@ThunderBird2086"
-  ]
+  ],
+  "version": "0.1.8"
 }
