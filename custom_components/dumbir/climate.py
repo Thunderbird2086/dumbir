@@ -38,14 +38,12 @@ from homeassistant.const import (
     # STATE_OFF,
     # STATE_ON,
     STATE_UNKNOWN,
-    TEMP_CELSIUS
 )
 
 from homeassistant.core import callback
 from homeassistant.helpers.event import async_track_state_change
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.util.temperature import convert as convert_temperature
 
 from . import (
     load_ircodes,
@@ -674,16 +672,14 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
         return self._support_flags
 
     @property
-    def min_temp(self) -> float:
+    def min_temp(self):
         """Return the minimum temperature."""
-        return convert_temperature(self._min_temp, TEMP_CELSIUS,
-                                   self.temperature_unit)
+        return self._min_temp
 
     @property
-    def max_temp(self) -> float:
+    def max_temp(self):
         """Return the polling state."""
-        return convert_temperature(self._max_temp, TEMP_CELSIUS,
-                                   self.temperature_unit)
+        return self._max_temp
 
     '''
     @property
