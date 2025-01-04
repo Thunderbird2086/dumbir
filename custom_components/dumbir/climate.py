@@ -8,19 +8,11 @@ import voluptuous as vol
 from homeassistant.core import HomeAssistant
 from homeassistant.components.climate import ClimateEntity, PLATFORM_SCHEMA
 from homeassistant.components.climate.const import (
-    HVAC_MODE_AUTO,
-    # HVAC_MODE_COOL,
-    # HVAC_MODE_DRY,
-    # HVAC_MODE_HEAT,
-    HVAC_MODE_OFF,
+    HVACMode,
     ATTR_HVAC_MODE,
     ATTR_FAN_MODE,
-    # ATTR_FAN_MODES,
     ATTR_SWING_MODE,
-    # ATTR_SWING_MODES,
-    SUPPORT_FAN_MODE,
-    SUPPORT_SWING_MODE,
-    SUPPORT_TARGET_TEMPERATURE
+    ClimateEntityFeature
 )
 from homeassistant.config_entries import ConfigEntry
 
@@ -58,14 +50,13 @@ from .const import (
     CONF_POWER_SENSOR,
     CONF_REMOTE,
     CONF_TEMPERATURE_SENSOR,
-    # CONF_TOGGLE
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_SUPPORT_FLAGS = (
-    SUPPORT_FAN_MODE |
-    SUPPORT_TARGET_TEMPERATURE
+    ClimateEntityFeature.FAN_MODE |
+    ClimateEntityFeature.TARGET_TEMPERATURE
 )
 
 ATTR_LAST_ON_STATE = 'last_on_state'
@@ -80,10 +71,10 @@ CONF_SWING_MODES = 'swing_modes'
 CONF_TEMPERATURE = 'temperature'
 
 DEFAULT_NAME = 'DumbIR Climate'
-DEFAULT_FAN_MODE_LIST = [HVAC_MODE_AUTO]
+DEFAULT_FAN_MODE_LIST = [HVACMode.AUTO]
 DEFAULT_MIN_TEMP = 16
 DEFAULT_MAX_TEMP = 30
-DEFAULT_OPERATION_LIST = [HVAC_MODE_AUTO]
+DEFAULT_OPERATION_LIST = [HVACMode.AUTO]
 DEFAULT_RETRY = 3
 DEFAULT_PRECISION = PRECISION_WHOLE
 DEFAULT_SWING_MODE_LIST = []
@@ -139,7 +130,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
 
         self._commands = climate_conf.get(CONF_COMMANDS)
 
-        self._current_hvac_mode = HVAC_MODE_OFF
+        self._current_hvac_mode = HVACMode.OFF
 
         self._last_state = {}
 
@@ -156,9 +147,9 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
         if self._swing_modes:
             self._current_state[ATTR_SWING_MODE] = self._swing_modes[0]
             self._last_state[ATTR_SWING_MODE] = self._swing_modes[0]
-            self._support_flags = self._support_flags | SUPPORT_SWING_MODE
+            self._support_flags = self._support_flags | ClimateEntityFeature.SWING_MODE
 
-        self._hvac_modes = [HVAC_MODE_OFF]
+        self._hvac_modes = [HVACMode.OFF]
 
         self._custom_modes = {}
         for an_op in climate_conf.get(CONF_OPERATIONS,
@@ -193,7 +184,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
         self._temp_lock = asyncio.Lock()
 
         # to suppress false error from Alexa component
-        self._current_temperature = 21.0
+        self._current_temperature = 99.0
 
         self._temperature_sensor = config.get(CONF_TEMPERATURE_SENSOR)
         self._humidity_sensor = config.get(CONF_HUMIDITY_SENSOR)
@@ -202,7 +193,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
         self._current_humidity = None
 
     def _set_custom_mode(self, hvac_mode):
-        if hvac_mode == HVAC_MODE_OFF:
+        if hvac_mode == HVACMode.OFF:
             return
 
         (self._min_temp, self._max_temp, self._precision) = \
@@ -227,7 +218,13 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
     def _update_last_state(self, hvac_mode):
         last_state = {}
         last_state[ATTR_TEMPERATURE] = self._current_state[ATTR_TEMPERATURE]
-        if hvac_mode in self._custom_modes:
+        if hvac_mode not in self._custom_modes:
+            self._last_state[ATTR_FAN_MODE] = \
+                self._current_state[ATTR_FAN_MODE]
+            if self._swing_modes:
+                self._last_state[ATTR_SWING_MODE] = \
+                    self._current_state[ATTR_SWING_MODE]
+        else:
             custom_mode = self._custom_modes[hvac_mode]
             if CONF_FAN_MODES in custom_mode:
                 last_state[ATTR_FAN_MODE] = self._current_state[ATTR_FAN_MODE]
@@ -238,7 +235,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
             if CONF_SWING_MODES in custom_mode:
                 last_state[ATTR_SWING_MODE] = \
                     self._current_state[ATTR_SWING_MODE]
-            else:
+            elif self._swing_modes:
                 self._last_state[ATTR_SWING_MODE] = \
                     self._current_state[ATTR_SWING_MODE]
 
@@ -262,7 +259,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
 
     def _get_payload(self, hvac_mode, fan_mode, target_temperature,
                      swing_mode):
-        if self.hvac_mode == HVAC_MODE_OFF:
+        if self.hvac_mode == HVACMode.OFF:
             return self._commands[CONF_POWER][CONF_COMMAND_OFF]
 
         payload = self._commands[hvac_mode][fan_mode]
@@ -298,23 +295,6 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
 
         self._update_humidity(new_state)
         await self.async_update_ha_state()
-
-    '''
-    async def _async_power_sensor_changed(self, entity_id, old_state,
-                                          new_state):
-        """Handle power sensor changes."""
-        if new_state is None:
-            return
-
-        if new_state.state == STATE_ON and self._hvac_mode == HVAC_MODE_OFF:
-            self._hvac_mode = HVAC_MODE_ON
-            await self.async_update_ha_state()
-
-        if new_state.state == HVAC_MODE_OFF:
-            if self._hvac_mode != HVAC_MODE_OFF:
-                self._hvac_mode = HVAC_MODE_OFF
-            await self.async_update_ha_state()
-    '''
 
     @callback
     def _update_current_temp(self, state):
@@ -400,16 +380,6 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
         """Return the list of available operation modes."""
         return self._hvac_modes
 
-    '''
-    @property
-    def hvac_action(self) -> Optional[str]:
-        """Return the current running hvac operation if supported.
-
-        Need to be one of CURRENT_HVAC_*.
-        """
-        return self._current_hvac_mode
-    '''
-
     @property
     def current_temperature(self) -> Optional[float]:
         """Return the current temperature."""
@@ -424,53 +394,6 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
     def target_temperature_step(self) -> Optional[float]:
         """Return the supported step of target temperature."""
         return self._precision
-
-    '''
-    @property
-    def target_temperature_high(self) -> Optional[float]:
-        """Return the highbound target temperature we try to reach.
-
-        Requires SUPPORT_TARGET_TEMPERATURE_RANGE.
-        """
-        # TODO
-        pass
-
-    @property
-    def target_temperature_low(self) -> Optional[float]:
-        """Return the lowbound target temperature we try to reach.
-
-        Requires SUPPORT_TARGET_TEMPERATURE_RANGE.
-        """
-        # TODO
-        pass
-
-    @property
-    def preset_mode(self) -> Optional[str]:
-        """Return the current preset mode, e.g., home, away, temp.
-
-        Requires SUPPORT_PRESET_MODE.
-        """
-        # TODO
-        pass
-
-    @property
-    def preset_modes(self) -> Optional[List[str]]:
-        """Return a list of available preset modes.
-
-        Requires SUPPORT_PRESET_MODE.
-        """
-        # TODO
-        pass
-
-    @property
-    def is_aux_heat(self) -> Optional[bool]:
-        """Return true if aux heater.
-
-        Requires SUPPORT_AUX_HEAT.
-        """
-        # TODO
-        pass
-    '''
 
     @property
     def fan_mode(self) -> Optional[str]:
@@ -504,13 +427,6 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
         """
         return self._swing_modes
 
-    '''
-    def set_temperature(self, **kwargs) -> None:
-        """Set new target temperature."""
-        # TODO
-        pass
-    '''
-
     async def async_set_temperature(self, **kwargs) -> None:
         """Set new target temperature."""
         temperature = kwargs.get(ATTR_TEMPERATURE)
@@ -525,7 +441,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
         self._target_temperature = round(temperature) \
             if self._precision == PRECISION_WHOLE else round(temperature, 1)
 
-        if self._current_hvac_mode != HVAC_MODE_OFF:
+        if self._current_hvac_mode != HVACMode.OFF:
             self._current_state[ATTR_TEMPERATURE] = self._target_temperature
             await self._send_ir()
 
@@ -533,38 +449,15 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
         # await self.hass.async_add_executor_job(
         #     ft.partial(self.set_temperature, **kwargs))
 
-    '''
-    def set_humidity(self, humidity: int) -> None:
-        """Set new target humidity."""
-        # TODO
-        pass
-
-    async def async_set_humidity(self, humidity: int) -> None:
-        """Set new target humidity."""
-        await self.hass.async_add_executor_job(self.set_humidity, humidity)
-    '''
-
-    '''
-    def set_fan_mode(self, fan_mode: str) -> None:
-        """Set new target fan mode."""
-        pass
-    '''
-
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         """Set new target fan mode."""
         self._current_state[ATTR_FAN_MODE] = fan_mode
 
-        if self._current_hvac_mode != HVAC_MODE_OFF:
+        if self._current_hvac_mode != HVACMode.OFF:
             await self._send_ir()
 
         await self.async_update_ha_state()
         # await self.hass.async_add_executor_job(self.set_fan_mode, fan_mode)
-
-    '''
-    def set_hvac_mode(self, hvac_mode: str) -> None:
-        """Set new target hvac mode."""
-        pass
-    '''
 
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
         """Set new target hvac mode."""
@@ -573,7 +466,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
 
         self._update_last_state(self._current_hvac_mode)
 
-        if hvac_mode == HVAC_MODE_OFF:
+        if hvac_mode == HVACMode.OFF:
             self._last_state[ATTR_HVAC_MODE] = self._current_hvac_mode
         else:
             self._set_custom_mode(hvac_mode)
@@ -600,50 +493,14 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
         await self.async_update_ha_state()
         # await self.hass.async_add_executor_job(self.set_hvac_mode, hvac_mode)
 
-    '''
-    def set_swing_mode(self, swing_mode: str) -> None:
-        """Set new target swing mode."""
-        pass
-    '''
-
     async def async_set_swing_mode(self, swing_mode: str) -> None:
         """Set new target swing operation."""
         self._current_state[ATTR_SWING_MODE] = swing_mode
 
-        if self._current_hvac_mode != HVAC_MODE_OFF:
+        if self._current_hvac_mode != HVACMode.OFF:
             await self._send_ir()
 
         await self.async_update_ha_state()
-
-    '''
-    def set_preset_mode(self, preset_mode: str) -> None:
-        """Set new preset mode."""
-        # TODO
-        pass
-
-    async def async_set_preset_mode(self, preset_mode: str) -> None:
-        """Set new preset mode."""
-        await self.hass.async_add_executor_job(
-            self.set_preset_mode, preset_mode)
-
-    def turn_aux_heat_on(self) -> None:
-        """Turn auxiliary heater on."""
-        # TODO
-        pass
-
-    async def async_turn_aux_heat_on(self) -> None:
-        """Turn auxiliary heater on."""
-        await self.hass.async_add_executor_job(self.turn_aux_heat_on)
-
-    def turn_aux_heat_off(self) -> None:
-        """Turn auxiliary heater off."""
-        # TODO
-        pass
-
-    async def async_turn_aux_heat_off(self) -> None:
-        """Turn auxiliary heater off."""
-        await self.hass.async_add_executor_job(self.turn_aux_heat_off)
-    '''
 
     async def async_turn_on(self) -> None:
         """Turn the entity on."""
@@ -651,20 +508,6 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
             await self.async_set_hvac_mode(self._last_state[ATTR_HVAC_MODE])
         else:
             await self.async_set_hvac_mode(self._hvac_modes[1])
-
-    '''
-    async def async_turn_off(self) -> None:
-        """Turn the entity off."""
-        if hasattr(self, 'turn_off'):
-            # pylint: disable=no-member
-            await self.hass.async_add_executor_job(self.turn_off)
-            return
-
-        # Fake turn off
-        if HVAC_MODE_OFF in self._hvac_modes:
-            await self.async_set_hvac_mode(HVAC_MODE_OFF)
-        # await self.async_set_hvac_mode(HVAC_MODE_OFF)
-    '''
 
     @property
     def supported_features(self) -> int:
@@ -680,18 +523,6 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
     def max_temp(self):
         """Return the polling state."""
         return self._max_temp
-
-    '''
-    @property
-    def min_humidity(self) -> int:
-        """Return the minimum humidity."""
-        return DEFAULT_MIN_HUMIDITY
-
-    @property
-    def max_humidity(self) -> int:
-        """Return the maximum humidity."""
-        return DEFAULT_MAX_HUMIDITY
-    '''
 
     async def async_added_to_hass(self):
         """Run when entity about to be added."""
@@ -730,9 +561,3 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
             if humidity_sensor_state and \
                humidity_sensor_state.state != STATE_UNKNOWN:
                 self._update_humidity(humidity_sensor_state)
-
-        '''
-        if self._power_sensor:
-            async_track_state_change(self.hass, self._power_sensor,
-                                     self._async_power_sensor_changed)
-        '''
