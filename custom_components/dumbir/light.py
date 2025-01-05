@@ -5,7 +5,7 @@ import voluptuous as vol
 
 from homeassistant.components.light import (
     ATTR_EFFECT,
-    SUPPORT_EFFECT,
+    LightEntityFeature,
     LightEntity,
     PLATFORM_SCHEMA
 )
@@ -74,7 +74,7 @@ class DumbIRLight(LightEntity, RestoreEntity):
         self._ir_codes = ir_codes
 
         self._is_on = False
-        self._support_flags = 0
+        self._support_flags : LightEntityFeature = LightEntityFeature(0)
 
         channel = config.get(CONF_CHANNEL)
         if isinstance(self._ir_codes, list):
@@ -94,7 +94,7 @@ class DumbIRLight(LightEntity, RestoreEntity):
         self._effect_list = None
         self._effect = None
         if ATTR_EFFECT in self._ir_codes:
-            self._support_flags = self._support_flags | SUPPORT_EFFECT
+            self._support_flags = self._support_flags | LightEntityFeature.EFFECT
             self._effect_list = list(self._ir_codes[ATTR_EFFECT].keys())
             self._effect = self._effect_list[0]
 
@@ -119,7 +119,7 @@ class DumbIRLight(LightEntity, RestoreEntity):
         return self._is_on
 
     @property
-    def supported_features(self) -> int:
+    def supported_features(self) -> LightEntityFeature:
         """Flag supported features."""
         return self._support_flags
 

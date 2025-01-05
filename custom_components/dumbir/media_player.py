@@ -9,17 +9,7 @@ from homeassistant.components.media_player import (
 )
 
 from homeassistant.components.media_player.const import (
-    SUPPORT_TURN_OFF,
-    SUPPORT_TURN_ON,
-    SUPPORT_PREVIOUS_TRACK,
-    SUPPORT_NEXT_TRACK,
-    SUPPORT_PLAY,
-    SUPPORT_PAUSE,
-    SUPPORT_STOP,
-    SUPPORT_VOLUME_STEP,
-    SUPPORT_VOLUME_MUTE,
-    # SUPPORT_SELECT_CHANNEL,
-    SUPPORT_SELECT_SOURCE,
+    MediaPlayerEntityFeature,
     MEDIA_TYPE_CHANNEL
 )
 
@@ -109,7 +99,7 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
         self._source_list = []
         self._channel_list = []
         self._source = None
-        self._support_flags = 0
+        self._support_flags : MediaPlayerEntityFeature = MediaPlayerEntityFeature(0)
         self._is_volume_muted = False
         self._is_power_toggle = False
 
@@ -118,8 +108,8 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
             power = self._ir_codes[CONF_POWER]
             if CONF_TOGGLE in power and power[CONF_TOGGLE] is not None:
                 self._is_power_toggle = True
-                self._support_flags = self._support_flags | SUPPORT_TURN_OFF
-                self._support_flags = self._support_flags | SUPPORT_TURN_ON
+                self._support_flags = self._support_flags | MediaPlayerEntityFeature.TURN_OFF
+                self._support_flags = self._support_flags | MediaPlayerEntityFeature.TURN_ON
                 power = {CONF_COMMAND_ON: power[CONF_TOGGLE],
                          CONF_COMMAND_OFF: power[CONF_TOGGLE]}
                 self._ir_codes.update({CONF_POWER: power})
@@ -127,43 +117,43 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
                 if CONF_COMMAND_OFF in power and \
                    power[CONF_COMMAND_OFF] is not None:
                     self._support_flags = self._support_flags | \
-                                          SUPPORT_TURN_OFF
+                                          MediaPlayerEntityFeature.TURN_OFF
 
                 if CONF_COMMAND_ON in power and \
                    power[CONF_COMMAND_ON] is not None:
                     self._support_flags = self._support_flags | \
-                                          SUPPORT_TURN_ON
+                                          MediaPlayerEntityFeature.TURN_ON
 
         if CONF_VOLUME in self._ir_codes:
             volume = self._ir_codes[CONF_VOLUME]
             if (CONF_DOWN in volume and volume[CONF_DOWN] is not None) \
                or (CONF_UP in volume and volume[CONF_UP] is not None):
-                self._support_flags = self._support_flags | SUPPORT_VOLUME_STEP
+                self._support_flags = self._support_flags | MediaPlayerEntityFeature.VOLUME_STEP
 
             if CONF_MUTE in volume and volume[CONF_MUTE] is not None:
-                self._support_flags = self._support_flags | SUPPORT_VOLUME_MUTE
+                self._support_flags = self._support_flags | MediaPlayerEntityFeature.VOLUME_MUTE
 
         if CONF_MEDIA in self._ir_codes:
             media = self._ir_codes[CONF_MEDIA]
             if CONF_PREVIOUS in media and media[CONF_PREVIOUS] is not None:
                 self._support_flags = self._support_flags | \
-                    SUPPORT_PREVIOUS_TRACK
+                    MediaPlayerEntityFeature.PREVIOUS_TRACK
 
             if CONF_NEXT in media and media[CONF_NEXT] is not None:
-                self._support_flags = self._support_flags | SUPPORT_NEXT_TRACK
+                self._support_flags = self._support_flags | MediaPlayerEntityFeature.NEXT_TRACK
 
             if CONF_PLAY in media and media[CONF_PLAY] is not None:
-                self._support_flags = self._support_flags | SUPPORT_PLAY
+                self._support_flags = self._support_flags | MediaPlayerEntityFeature.PLAY
 
             if CONF_PAUSE in media and media[CONF_PAUSE] is not None:
-                self._support_flags = self._support_flags | SUPPORT_PAUSE
+                self._support_flags = self._support_flags | MediaPlayerEntityFeature.PAUSE
 
             if CONF_STOP in media and media[CONF_STOP] is not None:
-                self._support_flags = self._support_flags | SUPPORT_STOP
+                self._support_flags = self._support_flags | MediaPlayerEntityFeature.STOP
 
         if CONF_SOURCES in self._ir_codes and \
            self._ir_codes[CONF_SOURCES] is not None:
-            self._support_flags = self._support_flags | SUPPORT_SELECT_SOURCE
+            self._support_flags = self._support_flags | MediaPlayerEntityFeature.SELECT_SOURCE
 
             # Source list
             for key in self._ir_codes[CONF_SOURCES]:
@@ -171,7 +161,7 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
         '''
         if CONF_CHANNELS in self._ir_codes and \
            self._ir_codes[CONF_CHANNELS] is not None:
-            self._support_flags = self._support_flags | SUPPORT_SELECT_CHANNEL
+            self._support_flags = self._support_flags | MediaPlayerEntityFeature.SELECT_CHANNEL
 
             # Channel list
             for key in self._ir_codes[CONF_CHANNELS]:
