@@ -55,6 +55,8 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_SUPPORT_FLAGS = (
+    ClimateEntityFeature.TURN_OFF |
+    ClimateEntityFeature.TURN_ON  |
     ClimateEntityFeature.FAN_MODE |
     ClimateEntityFeature.TARGET_TEMPERATURE
 )
