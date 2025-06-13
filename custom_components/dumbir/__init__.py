@@ -15,38 +15,30 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS = ["climate", "light", "media_player"]
 
 
-async def async_setup(hass: HomeAssistant, config: dict):
+async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
     """Set up the dumbIR component."""
     hass.data.setdefault(DOMAIN, {})
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up dumbIR from a config entry."""
-    # TODO Store an API object for your platforms to access
-    # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
-
     _LOGGER.debug("async_setup_entry: entry.data=(%s)", entry.data)
     component = entry.data[PLATFORM_TO_ADD]
     hass.data[DOMAIN][entry.entry_id] = component
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(entry, component)
-    )
-
+    # Use async_forward_entry_setups for compatibility with HA 2025.6+
+    await hass.config_entries.async_forward_entry_setups(entry, [component])
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     _LOGGER.debug("async_unload: entry.data=(%s)", entry.data)
     component = entry.data[PLATFORM_TO_ADD]
-    unload_ok = await hass.config_entries.async_forward_entry_unload(entry, component)
-
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, [component])
     _LOGGER.debug("async_unload: unload_ok=(%s)", unload_ok)
-    _LOGGER.debug("async_unload: unload_ok=(%s)", type(unload_ok))
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
-
     return unload_ok
 
 
@@ -61,7 +53,7 @@ def load_ircodes(hass, ircodes_path):
         _LOGGER.error("The ir code file was not found. (%s)", ir_codes_path)
         return None
 
-    with open(ir_codes_path, 'r') as f:
+    with open(ir_codes_path, 'r', encoding='utf-8') as f:
         ir_codes = yaml.load(f, Loader=yaml.SafeLoader)
 
     if not ir_codes:
