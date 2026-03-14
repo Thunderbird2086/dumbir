@@ -107,11 +107,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     if not climate_conf:
         return
 
-    async_add_entities([DumbIRClimate(hass, config, climate_conf)])
+    async_add_entities([DumbIRClimate(hass, config, climate_conf,
+                                      entry.entry_id)])
 
 
 class DumbIRClimate(ClimateEntity, RestoreEntity):
-    def __init__(self, hass, config, climate_conf):
+    def __init__(self, hass, config, climate_conf, entry_id: str):
         """Initialize the Broadlink IR Climate device."""
         self.hass = hass
 
@@ -131,6 +132,9 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
         self._unit_of_measurement = hass.config.units.temperature_unit
 
         self._commands = climate_conf.get(CONF_COMMANDS)
+
+        # Unique id for entity registry; use the config entry id
+        self._unique_id = f"{entry_id}_climate"
 
         self._current_hvac_mode = HVACMode.OFF
 
@@ -340,6 +344,11 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
     def name(self):
         """Return the name of the climate device."""
         return self._name
+
+    @property
+    def unique_id(self) -> Optional[str]:
+        """Return a unique ID for this entity."""
+        return self._unique_id
 
     @property
     def precision(self) -> float:

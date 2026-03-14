@@ -58,11 +58,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     config = entry.data
     ir_codes = load_ircodes(hass, config.get(CONF_IRCODES))
 
-    async_add_entities([DumbIRLight(hass, config, ir_codes)])
+    async_add_entities([DumbIRLight(hass, config, ir_codes, entry.entry_id)])
 
 
 class DumbIRLight(LightEntity, RestoreEntity):
-    def __init__(self, hass, config, ir_codes):
+    def __init__(self, hass, config, ir_codes, entry_id: str):
         """Initialize the Broadlink IR Media device."""
         self.hass = hass
 
@@ -72,6 +72,9 @@ class DumbIRLight(LightEntity, RestoreEntity):
             self._remote = '.'.join(['remote', self._remote])
 
         self._ir_codes = ir_codes
+
+        # Unique id for entity registry; use the config entry id
+        self._unique_id = f"{entry_id}_light"
 
         self._is_on = False
         self._support_flags : LightEntityFeature = LightEntityFeature(0)
@@ -102,6 +105,11 @@ class DumbIRLight(LightEntity, RestoreEntity):
     def name(self) -> str:
         """Return the name of the media player."""
         return self._name
+
+    @property
+    def unique_id(self):
+        """Return a unique ID for this entity."""
+        return self._unique_id
 
     @property
     def effect_list(self) -> list:

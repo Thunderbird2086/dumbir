@@ -79,11 +79,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     if not ir_codes:
         return
 
-    async_add_entities([DumbIRMediaPlayer(hass, config, ir_codes)])
+    async_add_entities([DumbIRMediaPlayer(hass, config, ir_codes, entry.entry_id)])
 
 
 class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
-    def __init__(self, hass, config, ir_codes):
+    def __init__(self, hass, config, ir_codes, entry_id: str):
         """Initialize the Broadlink IR Media device."""
         self.hass = hass
 
@@ -94,6 +94,9 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
 
         self._power_sensor = config.get(CONF_POWER_SENSOR)
         self._ir_codes = ir_codes
+
+        # Unique id for entity registry; use the config entry id
+        self._unique_id = f"{entry_id}_media_player"
 
         self._state = STATE_IDLE
         self._source_list = []
@@ -184,6 +187,11 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
     def name(self):
         """Return the name of the media player."""
         return self._name
+
+    @property
+    def unique_id(self):
+        """Return a unique ID for this entity."""
+        return self._unique_id
 
     @property
     def state(self):
