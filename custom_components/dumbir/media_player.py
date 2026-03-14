@@ -27,7 +27,7 @@ from homeassistant.const import (
 )
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.event import async_track_state_change
+from homeassistant.helpers.event import async_track_state_change_event
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.restore_state import RestoreEntity
 
@@ -74,12 +74,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities):
     """Set up the Dumb IR Climate Entity."""
     config = entry.data
-    ir_codes = load_ircodes(hass, config.get(CONF_IRCODES))
+    ir_codes = await hass.async_add_executor_job(
+        load_ircodes, hass, config.get(CONF_IRCODES)
+    )
 
     if not ir_codes:
         return
 
-    async_add_entities([DumbIRMediaPlayer(hass, config, ir_codes, entry.entry_id)])
+    async_add_entities([
+        DumbIRMediaPlayer(hass, config, ir_codes, entry.entry_id)
+    ])
 
 
 class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
@@ -95,8 +99,10 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
         self._power_sensor = config.get(CONF_POWER_SENSOR)
         self._ir_codes = ir_codes
 
-        # Unique id for entity registry; use the config entry id
-        self._unique_id = f"{entry_id}_media_player"
+        # Unique id for entity registry; include entry id and name
+        safe_name = (self._name or "").replace(' ', '_').lower()
+        self._unique_id = f"{entry_id}_media_player_{safe_name}"
+        self._entry_id = entry_id
 
         self._state = STATE_IDLE
         self._source_list = []
@@ -244,10 +250,10 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
     async def async_turn_off(self):
         """Turn the media player off."""
         await send_command(self.hass, self._remote,
-                           self._ir_codes[CONF_POWER][CONF_COMMAND_OFF])
+                   self._ir_codes[CONF_POWER][CONF_COMMAND_OFF])
 
         self._state = STATE_OFF
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_turn_on(self):
         """Turn the media player off."""
@@ -255,7 +261,7 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
                            self._ir_codes[CONF_POWER][CONF_COMMAND_ON])
 
         self._state = STATE_ON
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_media_play(self):
         """Send play command.
@@ -264,7 +270,7 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
         await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_MEDIA][CONF_PLAY])
         self._state = STATE_PLAYING
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_media_pause(self):
         """Send pause command.
@@ -273,7 +279,7 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
         await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_MEDIA][CONF_PAUSE])
         self._state = STATE_PAUSED
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_media_stop(self):
         """Send stop command.
@@ -282,31 +288,31 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
         await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_MEDIA][CONF_STOP])
         self._state = STATE_IDLE
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_media_previous_track(self):
         """Send previous track command."""
         await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_MEDIA][CONF_PREVIOUS])
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_media_next_track(self):
         """Send next track command."""
         await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_MEDIA][CONF_NEXT])
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_volume_down(self):
         """Turn volume down for media player."""
         await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_VOLUME][CONF_DOWN])
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_volume_up(self):
         """Turn volume up for media player."""
         await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_VOLUME][CONF_UP])
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_mute_volume(self, mute):
         """Mute the volume."""
@@ -314,14 +320,14 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
 
         await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_VOLUME][CONF_MUTE])
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_select_source(self, source):
         """Select channel from source."""
         self._source = source
         await send_command(self.hass, self._remote,
                            self._ir_codes[CONF_SOURCES][source])
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_power_sensor_changed(self, entity_id,
                                          old_state, new_state):
@@ -331,22 +337,44 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
 
         if new_state.state == STATE_ON and self._state == STATE_OFF:
             self._state = STATE_ON
-            await self.async_update_ha_state()
+            self.async_write_ha_state()
 
         if new_state.state == STATE_OFF:
             self._state = STATE_OFF
-            await self.async_update_ha_state()
+            self.async_write_ha_state()
 
     async def async_added_to_hass(self):
         """Run when entity about to be added."""
         await super().async_added_to_hass()
 
         if self._power_sensor:
-            async_track_state_change(self.hass, self._power_sensor,
-                                     self.async_power_sensor_changed)
+            async_track_state_change_event(
+                self.hass, self._power_sensor, self._async_power_sensor_changed_event
+            )
 
         last_state = await self.async_get_last_state()
         _LOGGER.debug(last_state)
 
         if last_state is not None:
             self._state = last_state.state
+
+        # Attach to a device in the registry
+        self._attr_device_info = {
+            "identifiers": {("dumbir", self._entry_id)},
+            "name": self._remote,
+            "manufacturer": "dumbIR",
+        }
+
+    async def _async_power_sensor_changed_event(self, event):
+        """Handle power sensor change events."""
+        new_state = event.data.get('new_state')
+        if new_state is None:
+            return
+
+        if new_state.state == STATE_ON and self._state == STATE_OFF:
+            self._state = STATE_ON
+            self.async_write_ha_state()
+
+        if new_state.state == STATE_OFF:
+            self._state = STATE_OFF
+            self.async_write_ha_state()

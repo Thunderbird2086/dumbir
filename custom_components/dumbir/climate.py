@@ -31,9 +31,10 @@ from homeassistant.const import (
     # STATE_ON,
     STATE_UNKNOWN,
 )
+from homeassistant.const import STATE_UNAVAILABLE
 
 from homeassistant.core import callback
-from homeassistant.helpers.event import async_track_state_change
+from homeassistant.helpers.event import async_track_state_change_event
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.restore_state import RestoreEntity
 
@@ -102,7 +103,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities):
     """Set up the Dumb IR Climate Entity."""
     config = entry.data
-    climate_conf = load_ircodes(hass, config.get(CONF_IRCODES))
+    climate_conf = await hass.async_add_executor_job(
+        load_ircodes, hass, config.get(CONF_IRCODES)
+    )
 
     if not climate_conf:
         return
@@ -133,8 +136,10 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
 
         self._commands = climate_conf.get(CONF_COMMANDS)
 
-        # Unique id for entity registry; use the config entry id
-        self._unique_id = f"{entry_id}_climate"
+        # Unique id for entity registry; include entry id and name
+        safe_name = (self._name or "").replace(' ', '_').lower()
+        self._unique_id = f"{entry_id}_climate_{safe_name}"
+        self._entry_id = entry_id
 
         self._current_hvac_mode = HVACMode.OFF
 
@@ -291,7 +296,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
             return
 
         self._update_current_temp(new_state)
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
 
     async def _async_humidity_sensor_changed(self, entity_id, old_state,
                                              new_state):
@@ -300,38 +305,58 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
             return
 
         self._update_humidity(new_state)
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
+
+    async def _async_temp_sensor_changed_event(self, event):
+        """Handle temperature change events (new API)."""
+        new_state = event.data.get('new_state')
+        if new_state is None:
+            return
+        self._update_current_temp(new_state)
+        self.async_write_ha_state()
+
+    async def _async_humidity_sensor_changed_event(self, event):
+        """Handle humidity change events (new API)."""
+        new_state = event.data.get('new_state')
+        if new_state is None:
+            return
+        self._update_humidity(new_state)
+        self.async_write_ha_state()
 
     @callback
     def _update_current_temp(self, state):
         """Update thermostat with latest state from sensor."""
-        unit = state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
+        if state is None or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE, ''):
+            return
 
+        unit = state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
         try:
             _state = state.state
             if self.represents_float(_state):
                 self._current_temperature = self.hass.config.units.temperature(
                     float(_state), unit)
-        except ValueError as ex:
-            _LOGGER.error('Unable to update from sensor: %s', ex)
+        except (ValueError, TypeError) as ex:
+            _LOGGER.debug('Unable to update from sensor: %s', ex)
 
     @callback
     def _update_temp(self, state):
         """Update thermostat with latest state from temperature sensor."""
         try:
-            if state.state != STATE_UNKNOWN:
-                self._current_temperature = float(state.state)
-        except ValueError as ex:
-            _LOGGER.error("Unable to update from temperature sensor: %s", ex)
+            if state is None or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE, ''):
+                return
+            self._current_temperature = float(state.state)
+        except (ValueError, TypeError) as ex:
+            _LOGGER.debug("Unable to update from temperature sensor: %s", ex)
 
     @callback
     def _update_humidity(self, state):
         """Update thermostat with latest state from humidity sensor."""
         try:
-            if state.state != STATE_UNKNOWN:
-                self._current_humidity = float(state.state)
-        except ValueError as ex:
-            _LOGGER.error("Unable to update from humidity sensor: %s", ex)
+            if state is None or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE, ''):
+                return
+            self._current_humidity = float(state.state)
+        except (ValueError, TypeError) as ex:
+            _LOGGER.debug("Unable to update from humidity sensor: %s", ex)
 
     def represents_float(self, s):
         try:
@@ -456,7 +481,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
             self._current_state[ATTR_TEMPERATURE] = self._target_temperature
             await self._send_ir()
 
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
         # await self.hass.async_add_executor_job(
         #     ft.partial(self.set_temperature, **kwargs))
 
@@ -467,7 +492,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
         if self._current_hvac_mode != HVACMode.OFF:
             await self._send_ir()
 
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
         # await self.hass.async_add_executor_job(self.set_fan_mode, fan_mode)
 
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
@@ -501,7 +526,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
         self._current_hvac_mode = hvac_mode
 
         await self._send_ir()
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
         # await self.hass.async_add_executor_job(self.set_hvac_mode, hvac_mode)
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:
@@ -511,7 +536,7 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
         if self._current_hvac_mode != HVACMode.OFF:
             await self._send_ir()
 
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_turn_on(self) -> None:
         """Turn the entity on."""
@@ -557,18 +582,31 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
                 self._last_state = last_state.attributes[ATTR_LAST_ON_STATE]
 
         if self._temperature_sensor:
-            async_track_state_change(self.hass, self._temperature_sensor,
-                                     self._async_temp_sensor_changed)
+            async_track_state_change_event(
+                self.hass, self._temperature_sensor,
+                self._async_temp_sensor_changed_event,
+            )
 
             temp_sensor_state = self.hass.states.get(self._temperature_sensor)
-            if temp_sensor_state and temp_sensor_state.state != STATE_UNKNOWN:
+            if temp_sensor_state and temp_sensor_state.state not in (
+                STATE_UNKNOWN, STATE_UNAVAILABLE,
+            ):
                 self._update_temp(temp_sensor_state)
 
         if self._humidity_sensor:
-            async_track_state_change(self.hass, self._humidity_sensor,
-                                     self._async_humidity_sensor_changed)
+            async_track_state_change_event(
+                self.hass, self._humidity_sensor,
+                self._async_humidity_sensor_changed_event,
+            )
 
             humidity_sensor_state = self.hass.states.get(self._humidity_sensor)
             if humidity_sensor_state and \
-               humidity_sensor_state.state != STATE_UNKNOWN:
+               humidity_sensor_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
                 self._update_humidity(humidity_sensor_state)
+
+        # Attach entity to a device in the registry so it can be assigned to areas
+        self._attr_device_info = {
+            "identifiers": {("dumbir", self._entry_id)},
+            "name": self._remote,
+            "manufacturer": "dumbIR",
+        }
