@@ -56,13 +56,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities):
     """Set up the Dumb IR Climate Entity."""
     config = entry.data
-    ir_codes = load_ircodes(hass, config.get(CONF_IRCODES))
+    ir_codes = await hass.async_add_executor_job(
+        load_ircodes, hass, config.get(CONF_IRCODES)
+    )
 
-    async_add_entities([DumbIRLight(hass, config, ir_codes)])
+    async_add_entities([
+        DumbIRLight(hass, config, ir_codes, entry.entry_id)
+    ])
 
 
 class DumbIRLight(LightEntity, RestoreEntity):
-    def __init__(self, hass, config, ir_codes):
+    def __init__(self, hass, config, ir_codes, entry_id: str):
         """Initialize the Broadlink IR Media device."""
         self.hass = hass
 
@@ -72,6 +76,11 @@ class DumbIRLight(LightEntity, RestoreEntity):
             self._remote = '.'.join(['remote', self._remote])
 
         self._ir_codes = ir_codes
+
+        # Unique id for entity registry; include entry id and channel (if present)
+        channel = config.get(CONF_CHANNEL)
+        self._unique_id = f"{entry_id}_light_{channel}"
+        self._entry_id = entry_id
 
         self._is_on = False
         self._support_flags : LightEntityFeature = LightEntityFeature(0)
@@ -104,6 +113,11 @@ class DumbIRLight(LightEntity, RestoreEntity):
         return self._name
 
     @property
+    def unique_id(self):
+        """Return a unique ID for this entity."""
+        return self._unique_id
+
+    @property
     def effect_list(self) -> list:
         """Return the list of supported effects."""
         return self._effect_list
@@ -122,6 +136,16 @@ class DumbIRLight(LightEntity, RestoreEntity):
     def supported_features(self) -> LightEntityFeature:
         """Flag supported features."""
         return self._support_flags
+
+    @property
+    def supported_color_modes(self):
+        """Return supported color modes (empty if none)."""
+        return {"onoff"}
+
+    @property
+    def color_mode(self):
+        """Return current color mode (not supported)."""
+        return "onoff"
 
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the light on"""
@@ -154,3 +178,10 @@ class DumbIRLight(LightEntity, RestoreEntity):
             self._is_on = last_state.state == STATE_ON
             if ATTR_EFFECT in last_state.attributes:
                 self._effect = last_state.attributes[ATTR_EFFECT]
+
+        # Attach entity to a device so it can be added to areas
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, self._entry_id)},
+            "name": self._remote,
+            "manufacturer": "dumbIR",
+        }
