@@ -329,20 +329,6 @@ class DumbIRMediaPlayer(MediaPlayerEntity, RestoreEntity):
                            self._ir_codes[CONF_SOURCES][source])
         self.async_write_ha_state()
 
-    async def async_power_sensor_changed(self, entity_id,
-                                         old_state, new_state):
-        """update power state"""
-        if new_state is None:
-            return
-
-        if new_state.state == STATE_ON and self._state == STATE_OFF:
-            self._state = STATE_ON
-            self.async_write_ha_state()
-
-        if new_state.state == STATE_OFF:
-            self._state = STATE_OFF
-            self.async_write_ha_state()
-
     async def async_added_to_hass(self):
         """Run when entity about to be added."""
         await super().async_added_to_hass()

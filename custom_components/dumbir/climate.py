@@ -289,24 +289,6 @@ class DumbIRClimate(ClimateEntity, RestoreEntity):
 
             await send_command(self.hass, self._remote, payload)
 
-    async def _async_temp_sensor_changed(self, entity_id, old_state,
-                                         new_state):
-        """Handle temperature changes."""
-        if new_state is None:
-            return
-
-        self._update_current_temp(new_state)
-        self.async_write_ha_state()
-
-    async def _async_humidity_sensor_changed(self, entity_id, old_state,
-                                             new_state):
-        """Handle humidity sensor changes."""
-        if new_state is None:
-            return
-
-        self._update_humidity(new_state)
-        self.async_write_ha_state()
-
     async def _async_temp_sensor_changed_event(self, event):
         """Handle temperature change events (new API)."""
         new_state = event.data.get('new_state')
