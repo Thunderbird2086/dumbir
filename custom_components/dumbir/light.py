@@ -131,6 +131,16 @@ class DumbIRLight(LightEntity, RestoreEntity):
         """Flag supported features."""
         return self._support_flags
 
+    @property
+    def supported_color_modes(self):
+        """Return supported color modes (empty if none)."""
+        return {"onoff"}
+
+    @property
+    def color_mode(self):
+        """Return current color mode (not supported)."""
+        return "onoff"
+
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the light on"""
         self._is_on = True
